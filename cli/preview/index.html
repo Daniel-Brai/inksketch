@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>inksketch preview</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="brand" href="/">
+        <img src="/logo.svg" alt="" width="28" height="28" />
+        <span class="brand-name">inksketch</span>
+        <span class="brand-tag">preview</span>
+      </a>
+
+      <span class="status" id="status" data-state="connecting">
+        <i aria-hidden="true"></i>
+        <span id="status-text">connecting</span>
+      </span>
+
+      <div class="controls">
+        <div class="dropdown" id="theme">
+          <button
+            class="control"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-label="Drawing theme"
+          >
+            <span class="control-label">Drawing</span>
+            <span class="control-value" id="theme-value">auto</span>
+            <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+
+          <ul class="menu" role="listbox" tabindex="-1" hidden>
+            <li role="option" data-value="auto"><b>auto</b><span>follows the system</span></li>
+            <li role="option" data-value="light"><b>light</b><span>fixed light colors</span></li>
+            <li role="option" data-value="dark"><b>dark</b><span>fixed dark colors</span></li>
+            <li role="option" data-value="inherit"><b>inherit</b><span>follows this page</span></li>
+          </ul>
+        </div>
+
+        <div class="segmented" role="group" aria-label="Page theme">
+          <button type="button" data-page="light" aria-label="Light page">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="3" />
+              <path
+                d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"
+              />
+            </svg>
+          </button>
+          <button type="button" data-page="dark" aria-label="Dark page">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M13 9.5A5.5 5.5 0 0 1 6.5 3a5.5 5.5 0 1 0 6.5 6.5z" />
+            </svg>
+          </button>
+        </div>
+
+        <button class="primary" id="replay" type="button">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.6h2.6" />
+          </svg>
+          Replay all
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <div class="toolbar">
+        <p class="summary" id="summary"></p>
+        <button class="ghost" id="collapse-all" type="button">Collapse all</button>
+      </div>
+      <div id="groups"></div>
+      <div class="empty" id="empty" hidden>
+        <img src="/logo.svg" alt="" width="48" height="48" />
+        <p>No sketches here yet.</p>
+        <span>Add a <code>.ts</code> file that default-exports a sketch and it shows up here.</span>
+      </div>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

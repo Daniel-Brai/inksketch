@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="96" height="96" role="img" aria-label="inksketch">
+  <rect width="32" height="32" rx="8" fill="#1c1b19"/>
+  <g stroke="#f6f4ef" stroke-width="2.3" stroke-linecap="round" fill="none">
+    <path d="M7 10.5 L24.5 9.5"/>
+    <path d="M22.5 7.5 L23.5 24.5"/>
+    <path d="M25 22.5 L8.5 23.2"/>
+    <path d="M10 25 L9.2 8"/>
+  </g>
+  <circle cx="23.3" cy="22.8" r="2.1" fill="#d85a30"/>
+</svg>

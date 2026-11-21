@@ -1,0 +1,48 @@
+{
+  "name": "inksketch",
+  "version": "0.1.0",
+  "description": "Hand-drawn SVG illustrations and animations for explaining ideas on the web",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./document": "./src/document/index.ts",
+    "./document/tracks": "./src/document/tracks.ts",
+    "./figures": "./src/figures/index.ts"
+  },
+  "bin": {
+    "inksketch": "./bin/inksketch.ts"
+  },
+  "files": [
+    "src",
+    "bin",
+    "cli",
+    "assets",
+    "README.md"
+  ],
+  "engines": {
+    "bun": ">=1.3"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test test/",
+    "stress": "bun test/stress.ts",
+    "examples": "bun bin/inksketch.ts render examples --out examples/out",
+    "preview": "bun bin/inksketch.ts preview examples",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+    "prettier": "^3.10.1",
+    "typescript": "^6.0.3",
+    "@types/bun": "^1.3.0"
+  },
+  "imports": {
+    "#/*": "./src/*",
+    "#cli/*": "./cli/*"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@opentui/core": "0.9.7"
+  }
+}
