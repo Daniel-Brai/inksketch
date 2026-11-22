@@ -159,8 +159,7 @@ export class Sketch {
     return node;
   }
 
-  group(build: (s: this) => void, opts: GroupOptions = {}): Shape {
-    const { label, className, ...transform } = opts;
+  group(build: (s: this) => void, transform: GroupOptions = {}): Shape {
     const hasTransform = Object.values(transform).some((v) => v !== undefined);
 
     const node: GroupNode = {
@@ -169,8 +168,6 @@ export class Sketch {
       children: [],
       motions: [],
       draw: {},
-      label,
-      className,
       transform: hasTransform ? transform : undefined,
     };
 
@@ -355,11 +352,10 @@ export class Sketch {
       for (let layer = 0; layer < count; layer++) {
         const threshold = (layer + 0.5) / (count + 0.5);
 
-        for (const segment of hatchSegmentsBounded(poly, numberAt(angles, layer), gap)) {
-          for (const run of toneRuns(segment, tone, threshold)) {
-            this.stroke([run[0], run[1]], false, lineInk, false);
-          }
-        }
+        const segments = hatchSegmentsBounded(poly, numberAt(angles, layer), gap);
+        const runs = segments.flatMap((segment) => toneRuns(segment, tone, threshold));
+
+        for (const run of runs) this.stroke([run[0], run[1]], false, lineInk, false);
       }
     }).gap(4);
   }
@@ -761,10 +757,6 @@ export class Sketch {
 
   roots(base: Point, length: number, o?: F.TreeOptions): Shape {
     return nature.roots(this, base, length, o);
-  }
-
-  bonsai(base: Point, height: number, o?: F.BonsaiOptions): Shape {
-    return nature.bonsai(this, base, height, o);
   }
 
   leaf(base: Point, length: number, o?: F.LeafOptions): Shape {

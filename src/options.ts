@@ -67,10 +67,7 @@ export interface DotOptions {
   draw?: boolean | undefined;
 }
 
-export interface GroupOptions extends Transform {
-  label?: string | undefined;
-  className?: string | undefined;
-}
+export type GroupOptions = Transform;
 
 export interface FrameOptions {
   fps?: number;

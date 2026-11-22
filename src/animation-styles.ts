@@ -44,7 +44,7 @@ export interface DrawStyle {
   style: string;
 }
 
-export const DRAW_CLASS = 'ik-d';
+const DRAW_CLASS = 'ik-d';
 export const FADE_CLASS = 'ik-f';
 
 export function sharedDrawCss(

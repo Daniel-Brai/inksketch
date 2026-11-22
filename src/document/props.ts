@@ -29,11 +29,6 @@ export class Props {
     return typeof v === 'string' ? v : fallback;
   }
 
-  flag(key: string, fallback: boolean): boolean {
-    const v = this.values[key];
-    return typeof v === 'boolean' ? v : fallback;
-  }
-
   point(key: string, fallback: Point): Point {
     const v = this.values[key];
 

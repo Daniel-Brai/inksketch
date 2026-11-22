@@ -2,38 +2,100 @@ import type { Box, Point } from './geometry.ts';
 
 export type DistanceField = (x: number, y: number) => number;
 
-type Edge = string;
-
 interface Crossing {
-  key: Edge;
+  edge: number;
   at: Point;
 }
 
+type Segment = [Crossing, Crossing];
+
+interface Grid {
+  field: DistanceField;
+  box: Box;
+  size: number;
+  cols: number;
+  rows: number;
+  values: Float64Array;
+  segments: Segment[];
+}
+
 const MAX_CELLS = 250000;
+const BLOCK = 6;
 
-interface Corner {
-  v: number;
-  p: Point;
+function createGrid(field: DistanceField, box: Box, cell: number): Grid {
+  const size = Math.max(cell, Math.sqrt((box.w * box.h) / MAX_CELLS));
+  const cols = Math.ceil(box.w / size) + 1;
+  const rows = Math.ceil(box.h / size) + 1;
+
+  return {
+    field,
+    box,
+    size,
+    cols,
+    rows,
+    values: new Float64Array((cols + 1) * (rows + 1)).fill(Number.NaN),
+    segments: [],
+  };
 }
 
-type Corners = readonly [Corner, Corner, Corner, Corner];
-
-function crossing(a: Corner, b: Corner, key: Edge): Crossing {
-  const t = a.v / (a.v - b.v);
-  return { key, at: [a.p[0] + (b.p[0] - a.p[0]) * t, a.p[1] + (b.p[1] - a.p[1]) * t] };
+function sample(grid: Grid, [i, j]: Point): number {
+  return grid.field(grid.box.x + i * grid.size, grid.box.y + j * grid.size);
 }
 
-function cellSegments(
-  corners: Corners,
-  keys: [Edge, Edge, Edge, Edge],
-  center: () => number,
-): Array<[Crossing, Crossing]> {
-  const [tl, tr, br, bl] = corners;
-  const top = (): Crossing => crossing(tl, tr, keys[0]);
-  const right = (): Crossing => crossing(tr, br, keys[1]);
-  const bottom = (): Crossing => crossing(bl, br, keys[2]);
-  const left = (): Crossing => crossing(tl, bl, keys[3]);
-  const index = (tl.v < 0 ? 8 : 0) | (tr.v < 0 ? 4 : 0) | (br.v < 0 ? 2 : 0) | (bl.v < 0 ? 1 : 0);
+function valueAt(grid: Grid, i: number, j: number): number {
+  const k = j * (grid.cols + 1) + i;
+  const cached = grid.values[k] ?? Number.NaN;
+
+  if (!Number.isNaN(cached)) return cached;
+
+  // An exact zero would sit on both sides of the edge, so nudge it outside.
+  const raw = sample(grid, [i, j]);
+  const v = raw === 0 ? 1e-9 : raw;
+
+  grid.values[k] = v;
+
+  return v;
+}
+
+function horizontalEdge(grid: Grid, i: number, j: number): number {
+  return (j * (grid.cols + 1) + i) * 2;
+}
+
+function verticalEdge(grid: Grid, i: number, j: number): number {
+  return (j * (grid.cols + 1) + i) * 2 + 1;
+}
+
+function worldPoint(grid: Grid, [i, j]: Point): Point {
+  return [grid.box.x + i * grid.size, grid.box.y + j * grid.size];
+}
+
+function crossing(grid: Grid, from: Point, to: Point, edge: number): Crossing {
+  const a = valueAt(grid, from[0], from[1]);
+  const b = valueAt(grid, to[0], to[1]);
+  const t = a / (a - b);
+  const [ax, ay] = worldPoint(grid, from);
+  const [bx, by] = worldPoint(grid, to);
+
+  return { edge, at: [ax + (bx - ax) * t, ay + (by - ay) * t] };
+}
+
+function caseOf(grid: Grid, i: number, j: number): number {
+  const tl = valueAt(grid, i, j) < 0 ? 8 : 0;
+  const tr = valueAt(grid, i + 1, j) < 0 ? 4 : 0;
+  const br = valueAt(grid, i + 1, j + 1) < 0 ? 2 : 0;
+  const bl = valueAt(grid, i, j + 1) < 0 ? 1 : 0;
+
+  return tl | tr | br | bl;
+}
+
+function cellSegments(grid: Grid, i: number, j: number, index: number): Segment[] {
+  const top = (): Crossing => crossing(grid, [i, j], [i + 1, j], horizontalEdge(grid, i, j));
+  const right = (): Crossing =>
+    crossing(grid, [i + 1, j], [i + 1, j + 1], verticalEdge(grid, i + 1, j));
+  const bottom = (): Crossing =>
+    crossing(grid, [i, j + 1], [i + 1, j + 1], horizontalEdge(grid, i, j + 1));
+  const left = (): Crossing => crossing(grid, [i, j], [i, j + 1], verticalEdge(grid, i, j));
+  const centerInside = (): boolean => sample(grid, [i + 0.5, j + 0.5]) < 0;
 
   switch (index) {
     case 1:
@@ -55,46 +117,80 @@ function cellSegments(
     case 8:
       return [[left(), top()]];
     case 5:
-      return center() < 0
-        ? [
-            [left(), top()],
-            [bottom(), right()],
-          ]
-        : [
-            [left(), bottom()],
-            [top(), right()],
-          ];
+      if (centerInside()) {
+        return [
+          [left(), top()],
+          [bottom(), right()],
+        ];
+      }
+
+      return [
+        [left(), bottom()],
+        [top(), right()],
+      ];
     case 10:
-      return center() < 0
-        ? [
-            [top(), right()],
-            [left(), bottom()],
-          ]
-        : [
-            [left(), top()],
-            [bottom(), right()],
-          ];
+      if (centerInside()) {
+        return [
+          [top(), right()],
+          [left(), bottom()],
+        ];
+      }
+
+      return [
+        [left(), top()],
+        [bottom(), right()],
+      ];
     default:
       return [];
   }
 }
 
-function stitch(segments: Array<[Crossing, Crossing]>): Point[][] {
-  const byKey = new Map<Edge, Array<[Crossing, Crossing]>>();
+function traceCell(grid: Grid, i: number, j: number): void {
+  const index = caseOf(grid, i, j);
 
-  for (const seg of segments) {
-    for (const end of seg) {
-      const list = byKey.get(end.key);
+  if (index === 0 || index === 15) return;
+
+  for (const segment of cellSegments(grid, i, j, index)) grid.segments.push(segment);
+}
+
+function traceBlock(grid: Grid, [bi, bj]: Point, reach: number): void {
+  const center = sample(grid, [bi + BLOCK / 2, bj + BLOCK / 2]);
+
+  // A block whose center is far from the edge cannot contain any of it.
+  if (Math.abs(center) > reach) return;
+
+  const lastCol = Math.min(grid.cols, bi + BLOCK);
+  const lastRow = Math.min(grid.rows, bj + BLOCK);
+
+  for (let j = bj; j < lastRow; j++) {
+    for (let i = bi; i < lastCol; i++) traceCell(grid, i, j);
+  }
+}
+
+function nextUnused(
+  byEdge: Map<number, Segment[]>,
+  used: Set<Segment>,
+  edge: number,
+): Segment | undefined {
+  return byEdge.get(edge)?.find((s) => !used.has(s));
+}
+
+function stitch(segments: Segment[]): Point[][] {
+  const byEdge = new Map<number, Segment[]>();
+
+  for (const segment of segments) {
+    for (const end of segment) {
+      const list = byEdge.get(end.edge);
 
       if (list) {
-        list.push(seg);
+        list.push(segment);
       } else {
-        byKey.set(end.key, [seg]);
+        byEdge.set(end.edge, [segment]);
       }
     }
   }
 
-  const used = new Set<[Crossing, Crossing]>();
+  const used = new Set<Segment>();
   const loops: Point[][] = [];
 
   for (const first of segments) {
@@ -103,20 +199,19 @@ function stitch(segments: Array<[Crossing, Crossing]>): Point[][] {
     used.add(first);
 
     const loop: Point[] = [first[0].at, first[1].at];
-    let tail = first[1].key;
+    let tail = first[1].edge;
 
     for (let guard = 0; guard < segments.length; guard++) {
-      const next = (byKey.get(tail) ?? []).find((s) => !used.has(s));
+      const next = nextUnused(byEdge, used, tail);
 
       if (!next) break;
 
       used.add(next);
 
-      const forward = next[0].key === tail;
-      const far = forward ? next[1] : next[0];
+      const far = next[0].edge === tail ? next[1] : next[0];
 
       loop.push(far.at);
-      tail = far.key;
+      tail = far.edge;
     }
 
     if (loop.length > 3) loops.push(loop);
@@ -125,70 +220,13 @@ function stitch(segments: Array<[Crossing, Crossing]>): Point[][] {
   return loops;
 }
 
-const BLOCK = 6;
-
 export function traceContours(field: DistanceField, box: Box, cell: number): Point[][] {
-  const size = Math.max(cell, Math.sqrt((box.w * box.h) / MAX_CELLS));
-  const cols = Math.ceil(box.w / size) + 1;
-  const rows = Math.ceil(box.h / size) + 1;
-  const values = new Float64Array((cols + 1) * (rows + 1)).fill(Number.NaN);
-  const blockReach = BLOCK * size * Math.SQRT1_2 + size;
-  const segments: Array<[Crossing, Crossing]> = [];
+  const grid = createGrid(field, box, cell);
+  const reach = BLOCK * grid.size * Math.SQRT1_2 + grid.size;
 
-  const valueAt = (i: number, j: number): number => {
-    const k = j * (cols + 1) + i;
-    const cached = values[k] ?? Number.NaN;
-
-    if (!Number.isNaN(cached)) return cached;
-
-    const v = field(box.x + i * size, box.y + j * size);
-    const safe = v === 0 ? 1e-9 : v;
-
-    values[k] = safe;
-
-    return safe;
-  };
-
-  const corner = (i: number, j: number): Corner => ({
-    v: valueAt(i, j),
-    p: [box.x + i * size, box.y + j * size],
-  });
-
-  for (let bj = 0; bj < rows; bj += BLOCK) {
-    for (let bi = 0; bi < cols; bi += BLOCK) {
-      const center = field(box.x + (bi + BLOCK / 2) * size, box.y + (bj + BLOCK / 2) * size);
-
-      if (Math.abs(center) > blockReach) continue;
-
-      for (let j = bj; j < Math.min(rows, bj + BLOCK); j++) {
-        for (let i = bi; i < Math.min(cols, bi + BLOCK); i++) {
-          const corners: Corners = [
-            corner(i, j),
-            corner(i + 1, j),
-            corner(i + 1, j + 1),
-            corner(i, j + 1),
-          ];
-
-          const inside = corners.filter((c) => c.v < 0).length;
-
-          if (inside === 0 || inside === 4) continue;
-
-          const keys: [Edge, Edge, Edge, Edge] = [
-            `h${i},${j}`,
-            `v${i + 1},${j}`,
-            `h${i},${j + 1}`,
-            `v${i},${j}`,
-          ];
-
-          segments.push(
-            ...cellSegments(corners, keys, () =>
-              field(box.x + (i + 0.5) * size, box.y + (j + 0.5) * size),
-            ),
-          );
-        }
-      }
-    }
+  for (let bj = 0; bj < grid.rows; bj += BLOCK) {
+    for (let bi = 0; bi < grid.cols; bi += BLOCK) traceBlock(grid, [bi, bj], reach);
   }
 
-  return stitch(segments);
+  return stitch(grid.segments);
 }

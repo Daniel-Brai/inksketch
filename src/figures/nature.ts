@@ -1,13 +1,11 @@
 import {
   add,
-  bentLine,
   ellipsePoints,
   lerp,
   mul,
   pointAt,
   rad,
   rotate,
-  spline,
   type Point,
   type Size,
 } from '#/geometry.ts';
@@ -18,7 +16,6 @@ import type { Sketch } from '#/sketch.ts';
 
 import { scaledRoughness, scaledWidth } from './helpers.ts';
 import type {
-  BonsaiOptions,
   LeafOptions,
   PlantOptions,
   PotOptions,
@@ -356,111 +353,4 @@ export function scribble(s: Sketch, center: Point, r: number, o: ScribbleOptions
   }
 
   return s.curve(pts, { ...ink, roughness: scaledRoughness(s, ink, 1.2) });
-}
-
-function padOutline(center: Point, size: Size, phase: number): Point[] {
-  const pts: Point[] = [];
-
-  for (let i = 0; i < 72; i++) {
-    const a = (i / 72) * Math.PI * 2;
-    const bump = 0.86 + 0.16 * Math.abs(Math.sin(4.5 * a + phase));
-    const dy = Math.sin(a) * (size[1] / 2) * bump;
-
-    pts.push([
-      center[0] + Math.cos(a) * (size[0] / 2) * bump,
-      center[1] + (dy > 0 ? dy * 0.7 : dy),
-    ]);
-  }
-
-  return pts;
-}
-
-export function bonsai(s: Sketch, base: Point, height: number, o: BonsaiOptions = {}): Shape {
-  const { pads = 4, potWidth = height * 0.95, breezeDeg = 1.2, seed, ...ink } = o;
-  const rng = s.random(`bonsai:${seed ?? `${base[0]}:${base[1]}`}`);
-  const [cx, top] = base;
-  const swing = (k: number): number => rng.range(0.05, 0.14) * height * k;
-
-  const trunk = spline([
-    [cx, top],
-    [cx + swing(1), top - height * 0.22],
-    [cx - swing(1.2), top - height * 0.46],
-    [cx + swing(0.9), top - height * 0.68],
-    [cx - swing(0.5), top - height * 0.82],
-  ]);
-
-  const along = (t: number): Point =>
-    trunk[Math.min(trunk.length - 1, Math.round(t * (trunk.length - 1)))] ?? base;
-
-  const anchors = Array.from(
-    { length: Math.max(1, pads - 1) },
-    (_, i) => 0.4 + (i / Math.max(1, pads - 1)) * 0.5,
-  );
-
-  const thin: Ink = { ...ink, width: (ink.width ?? s.preset.strokeWidth) * 0.8 };
-
-  return s.group(() => {
-    s.taper(trunk, [height * 0.12, height * 0.03], { ...thin, shade: 'right' });
-
-    const ends: Point[] = anchors.map((t, i) => {
-      const from = along(t);
-      const side = i % 2 === 0 ? 1 : -1;
-
-      const to: Point = [
-        from[0] + side * height * rng.range(0.22, 0.36),
-        from[1] - height * rng.range(0.04, 0.14),
-      ];
-
-      s.taper(bentLine(from, to, -0.2 * side, 12), [height * 0.04, height * 0.014], {
-        ...thin,
-        shade: 'right',
-      });
-
-      return to;
-    });
-
-    ends.push(trunk.at(-1) ?? base);
-
-    for (const [i, end] of ends.entries()) {
-      const size: Size = [height * rng.range(0.3, 0.42), height * rng.range(0.13, 0.17)];
-      const pad = padOutline([end[0], end[1] - size[1] * 0.25], size, i * 1.7);
-
-      const foliage = s.group(() => {
-        s.curve(pad, { ...ink, closed: true, fill: 'paper' });
-        s.stipple(pad, { density: 5, from: 'bottom', strength: 0.9 }, ink);
-      });
-
-      if (breezeDeg > 0) {
-        foliage.sway({
-          angle: breezeDeg,
-          duration: rng.range(4200, 6400),
-          delay: -rng.range(0, 4000),
-        });
-      }
-    }
-
-    const rim = height * 0.05;
-    const body = height * 0.11;
-    const half = potWidth / 2;
-
-    s.polygon(
-      [
-        [cx - half * 0.94, top + rim],
-        [cx + half * 0.94, top + rim],
-        [cx + half * 0.84, top + rim + body],
-        [cx - half * 0.84, top + rim + body],
-      ],
-      { ...ink, fill: 'paper' },
-    );
-
-    s.rect([cx - half, top], [potWidth, rim], { ...ink, fill: 'paper' });
-    s.stipple(ellipsePoints([cx, top + rim * 0.3], [half * 0.9, rim * 0.35]), { density: 6 }, ink);
-
-    for (const x of [cx - half * 0.66, cx + half * 0.66]) {
-      s.rect([x - height * 0.03, top + rim + body], [height * 0.06, height * 0.025], {
-        ...ink,
-        fill: 'solid',
-      });
-    }
-  });
 }

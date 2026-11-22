@@ -10,8 +10,42 @@ const MAX_PEBBLES = 1500;
 const MAX_CELLS = 600;
 const MAX_BLADES = 3000;
 
-function cellKey(x: number, y: number): string {
-  return `${x}:${y}`;
+interface Circle {
+  c: Point;
+  r: number;
+}
+
+function cellKey(x: number, y: number): number {
+  // Packs both cell coordinates into one number so lookups skip string building.
+  return (x + 32768) * 65536 + (y + 32768);
+}
+
+const NEIGHBOURS: Point[] = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [0, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
+function overlapsAny(grid: Map<number, Circle[]>, circle: Circle, [gx, gy]: Point): boolean {
+  return NEIGHBOURS.some(([dx, dy]) => {
+    const bucket = grid.get(cellKey(gx + dx, gy + dy));
+
+    return bucket !== undefined && bucket.some((other) => touches(other, circle));
+  });
+}
+
+function touches(a: Circle, b: Circle): boolean {
+  const reach = a.r + b.r - 0.5;
+  const dx = a.c[0] - b.c[0];
+  const dy = a.c[1] - b.c[1];
+
+  return dx * dx + dy * dy < reach * reach;
 }
 
 function shadeOf(shade: PebblesOptions['shade'], r: number): FillSpec | undefined {
@@ -24,11 +58,11 @@ function packCircles(
   area: Box,
   o: { count: number; minR: number; maxR: number; seed: string },
   s: Sketch,
-): Array<{ c: Point; r: number }> {
+): Circle[] {
   const rng = s.random(o.seed);
   const cell = o.maxR * 2;
-  const grid = new Map<string, Array<{ c: Point; r: number }>>();
-  const placed: Array<{ c: Point; r: number }> = [];
+  const grid = new Map<number, Circle[]>();
+  const placed: Circle[] = [];
 
   for (let tries = 0; tries < o.count * 40 && placed.length < o.count; tries++) {
     const fade = tries / (o.count * 40);
@@ -36,19 +70,9 @@ function packCircles(
     const c: Point = [area.x + rng.next() * area.w, area.y + rng.next() * area.h];
     const gx = Math.floor(c[0] / cell);
     const gy = Math.floor(c[1] / cell);
-    let free = true;
+    const entry: Circle = { c, r };
 
-    for (let dx = -1; dx <= 1 && free; dx++) {
-      for (let dy = -1; dy <= 1 && free; dy++) {
-        for (const other of grid.get(cellKey(gx + dx, gy + dy)) ?? []) {
-          if (Math.hypot(other.c[0] - c[0], other.c[1] - c[1]) < other.r + r - 0.5) free = false;
-        }
-      }
-    }
-
-    if (!free) continue;
-
-    const entry = { c, r };
+    if (overlapsAny(grid, entry, [gx, gy])) continue;
 
     placed.push(entry);
 
@@ -128,6 +152,18 @@ function shrink(poly: Point[], by: number): Point[] {
   });
 }
 
+function clipCell(cell: Point[], seed: Point, other: Point): Point[] {
+  const mid = lerp(seed, other, 0.5);
+  const along = (Math.atan2(other[1] - seed[1], other[0] - seed[0]) * 180) / Math.PI + 90;
+  const [left, right] = splitConvex(cell, mid, along);
+
+  if (left.length >= 3 && pointInPolygon(seed, left)) return left;
+
+  if (right.length >= 3 && pointInPolygon(seed, right)) return right;
+
+  return cell;
+}
+
 function voronoiCells(area: Box, seeds: Point[]): Point[][] {
   const frame: Point[] = [
     [area.x, area.y],
@@ -144,12 +180,7 @@ function voronoiCells(area: Box, seeds: Point[]): Point[][] {
     for (const other of seeds) {
       if (other === seed || Math.hypot(other[0] - seed[0], other[1] - seed[1]) > near) continue;
 
-      const mid = lerp(seed, other, 0.5);
-      const along = (Math.atan2(other[1] - seed[1], other[0] - seed[0]) * 180) / Math.PI + 90;
-      const [left, right] = splitConvex(cell, mid, along);
-      const keep = [left, right].find((part) => part.length >= 3 && pointInPolygon(seed, part));
-
-      cell = keep ?? cell;
+      cell = clipCell(cell, seed, other);
     }
 
     return cell;
