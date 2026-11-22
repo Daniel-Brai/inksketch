@@ -21,10 +21,6 @@ export class Shape {
     return nodeBounds(this.node);
   }
 
-  get center(): Point {
-    return this.anchor('center');
-  }
-
   anchor(side: AnchorSide = 'center', gap = 0): Point {
     const b = this.bounds;
     const xs = { left: b.x - gap, mid: b.x + b.w / 2, right: b.x + b.w + gap };
@@ -135,16 +131,6 @@ export class Shape {
 
   blur(px: number): this {
     this.node.blur = px;
-    return this;
-  }
-
-  className(name: string): this {
-    this.node.className = name;
-    return this;
-  }
-
-  label(text: string): this {
-    this.node.label = text;
     return this;
   }
 

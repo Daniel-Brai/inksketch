@@ -187,10 +187,3 @@ export type Prop = 'sign' | 'briefcase' | 'phone' | 'umbrella' | 'ball';
 export type BodyType = 'neutral' | 'masculine' | 'feminine' | 'child';
 export type Outfit = 'trousers' | 'skirt' | 'dress' | 'coat';
 export type Hair = 'none' | 'short' | 'long' | 'bun' | 'ponytail';
-
-export interface BonsaiOptions extends Ink {
-  pads?: number;
-  potWidth?: number;
-  breezeDeg?: number;
-  seed?: number | string;
-}

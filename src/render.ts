@@ -238,8 +238,6 @@ function renderGroup(node: GroupNode, ctx: RenderContext): string | null {
 
   if (!children.length) return null;
 
-  if (node.label) children.unshift(`<title>${esc(node.label)}</title>`);
-
   let inner = children.join('');
 
   if (!ctx.still) {
@@ -251,7 +249,6 @@ function renderGroup(node: GroupNode, ctx: RenderContext): string | null {
   const list = present([
     transformAttr(node),
     numberAttr('opacity', node.opacity),
-    node.className ? `class="${esc(node.className)}"` : null,
     groupStyle(node, ctx),
   ]);
 

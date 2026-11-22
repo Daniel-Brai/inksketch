@@ -3,7 +3,7 @@ import { readNumbers } from './scan.ts';
 import { parsePath, type Subpath } from './svgpath.ts';
 import { scanTags, type Tag } from './xml.ts';
 
-export interface TracedShape {
+interface TracedShape {
   subpaths: Subpath[];
   filled: boolean;
   stroked: boolean;
@@ -129,6 +129,10 @@ function withStyle(attrs: Record<string, string>): Record<string, string> {
   }
 
   return out;
+}
+
+function transformSubpath(m: Matrix, sub: Subpath): Subpath {
+  return { closed: sub.closed, points: sub.points.map((p) => apply(m, p)) };
 }
 
 function rectPath(a: Record<string, string>, tolerance: number): Subpath[] {
@@ -287,10 +291,7 @@ export function readSVG(svg: string, tolerance = 3): { shapes: TracedShape[]; vi
     const filled = isFilled(tag.name, paint.fill);
 
     shapes.push({
-      subpaths: subs.map((sub) => ({
-        closed: sub.closed,
-        points: sub.points.map((p) => apply(paint.m, p)),
-      })),
+      subpaths: subs.map((sub) => transformSubpath(paint.m, sub)),
       filled,
       stroked: isStroked(paint, filled),
     });

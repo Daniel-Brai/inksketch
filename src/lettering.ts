@@ -2,13 +2,13 @@ import { ellipsePoints, type Point } from './geometry.ts';
 import { GLYPHS, SMALL_CAPS, SPACE, TRACKING, type Glyph } from './glyphs.ts';
 import { atEnd, readNumber, type Cursor } from './scan.ts';
 
-export interface GlyphJitter {
+interface GlyphJitter {
   dx: number;
   dy: number;
   rot: number;
 }
 
-export interface LetteringOptions {
+interface LetteringOptions {
   size: number;
   anchor?: 'start' | 'middle' | 'end' | undefined;
   lineHeight?: number | undefined;
@@ -99,6 +99,32 @@ function lineWidth(line: string, opts: LetteringOptions): number {
   return Math.max(0, w - tracking) * (opts.size / 10);
 }
 
+interface GlyphPlacement {
+  left: number;
+  base: number;
+  scale: number;
+  slant: number;
+  jitter: GlyphJitter;
+}
+
+function placeGlyph(glyph: Glyph, at: GlyphPlacement): Point[][] {
+  const cos = Math.cos(at.jitter.rot);
+  const sin = Math.sin(at.jitter.rot);
+  const half = (glyph.w * at.scale) / 2;
+
+  return parseGlyph(glyph.d).map((stroke) =>
+    stroke.map(([gx, gy]): Point => {
+      const ly = (gy - 10) * at.scale;
+      const lx = gx * at.scale - ly * at.slant - half;
+
+      return [
+        at.left + lx * cos - ly * sin + half + at.jitter.dx,
+        at.base + lx * sin + ly * cos + at.jitter.dy,
+      ];
+    }),
+  );
+}
+
 export function measureLettering(
   text: string,
   opts: LetteringOptions,
@@ -139,23 +165,11 @@ export function letteringStrokes(text: string, baseline: Point, opts: LetteringO
         continue;
       }
 
-      const s = unit * g.scale;
-      const j = opts.jitter ? opts.jitter(index++) : still;
-      const cos = Math.cos(j.rot);
-      const sin = Math.sin(j.rot);
-      const half = (g.glyph.w * s) / 2;
-      const left = cursor;
+      const jitter = opts.jitter ? opts.jitter(index++) : still;
 
-      for (const stroke of parseGlyph(g.glyph.d)) {
-        out.push(
-          stroke.map(([gx, gy]): Point => {
-            const ly = (gy - 10) * s;
-            const lx = gx * s - ly * slant - half;
-
-            return [left + lx * cos - ly * sin + half + j.dx, base + lx * sin + ly * cos + j.dy];
-          }),
-        );
-      }
+      out.push(
+        ...placeGlyph(g.glyph, { left: cursor, base, scale: unit * g.scale, slant, jitter }),
+      );
 
       cursor += (g.glyph.w * g.scale + tracking) * unit;
     }

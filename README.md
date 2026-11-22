@@ -345,7 +345,6 @@ s.swarm({
   kind: 'figure',
   motion: 'orbit',
 });
-s.bonsai([400, 300], 160);
 ```
 
 These are shortcuts built from the primitives above. You can draw any of them yourself from scratch.

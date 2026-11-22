@@ -347,7 +347,7 @@ export function cubicPoints(seg: Segment, count: number): Point[] {
   return out;
 }
 
-export interface PathIndex {
+interface PathIndex {
   points: readonly Point[];
   cumulative: number[];
   total: number;

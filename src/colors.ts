@@ -1,6 +1,6 @@
 import { isColorName, type Color, type ColorName } from './style.ts';
 
-export interface ThemedVariable {
+interface ThemedVariable {
   name: string;
   light: string;
   dark: string;

@@ -7,7 +7,7 @@ import { writePng } from './png.ts';
 import { isFailure, renderFresh } from './runner.ts';
 import { findScenes, outputPath } from './scenes.ts';
 
-export interface RenderCommand {
+interface RenderCommand {
   targets: string[];
   outDir: string | null;
   png: boolean;

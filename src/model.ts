@@ -109,9 +109,7 @@ export interface GroupNode extends NodeBase {
   transform?: Transform | undefined;
   motions: Motion[];
   draw: DrawControl;
-  className?: string | undefined;
   frame?: FlipbookFrame | undefined;
-  label?: string | undefined;
   blur?: number | undefined;
   window?: { fromMs: number; toMs: number | null } | undefined;
 }

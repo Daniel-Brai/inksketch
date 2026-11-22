@@ -14,7 +14,7 @@ export interface Skeleton {
   limbs: readonly [Chain, Chain, Chain, Chain];
 }
 
-export interface Proportions {
+interface Proportions {
   head: number;
   limbs: number;
 }

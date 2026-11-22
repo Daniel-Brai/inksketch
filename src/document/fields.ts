@@ -5,8 +5,8 @@ import type { SwarmMotion, SwarmOptions } from '#/swarm.types.ts';
 
 import type { FieldDef } from './document.types.ts';
 
-export type FillName = 'none' | 'paper' | 'solid' | 'hatch' | 'crosshatch' | 'stipple' | 'wash';
-export type PropName = 'none' | Prop;
+type FillName = 'none' | 'paper' | 'solid' | 'hatch' | 'crosshatch' | 'stipple' | 'wash';
+type PropName = 'none' | Prop;
 
 export const FILLS: readonly FillName[] = [
   'none',
