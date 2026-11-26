@@ -1,3 +1,4 @@
+import { inlineImages } from './images.ts';
 import { loadScene } from './scenes.ts';
 
 const [file, raw] = process.argv.slice(2);
@@ -10,7 +11,7 @@ if (file === undefined || raw === undefined) {
 try {
   const started = performance.now();
   const { sketch, options } = await loadScene(file);
-  const svg = sketch.toSVG({ ...options, ...JSON.parse(raw) });
+  const svg = sketch.toSVG({ ...options, ...JSON.parse(raw), images: inlineImages(file) });
 
   process.stdout.write(JSON.stringify({ file, svg, ms: Math.round(performance.now() - started) }));
 } catch (error) {

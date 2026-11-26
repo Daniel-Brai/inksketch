@@ -49,6 +49,7 @@ import {
   type DotsNode,
   type FillNode,
   type GroupNode,
+  type ImageNode,
   type SceneNode,
   type StrokeNode,
   type TextNode,
@@ -63,6 +64,7 @@ import type {
   DotOptions,
   FrameOptions,
   GroupOptions,
+  ImageOptions,
   Ink,
   MorphOptions,
   PathOptions,
@@ -641,6 +643,20 @@ export class Sketch {
 
   measure(content: string, size = 18): { width: number; height: number } {
     return measureLettering(content, { size });
+  }
+
+  image(src: string, at: Point, size: Size, o: ImageOptions = {}): Shape {
+    return this.group(() => {
+      this.push<ImageNode>({
+        kind: 'image',
+        id: this.nextId(),
+        src,
+        box: { x: at[0], y: at[1], w: size[0], h: size[1] },
+        fit: o.fit ?? 'contain',
+        opacity: o.opacity,
+        draw: o.draw ?? true,
+      });
+    });
   }
 
   raw(svg: string, bounds?: Box): Shape {

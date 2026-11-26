@@ -316,6 +316,22 @@ s.label([200, 100], 'centered on this point');
 
 Text is drawn as pen strokes by default, so it wobbles and writes itself on like the rest of the drawing. It works in images and PNGs with no fonts. Set `lettering: 'font'` to use a web font instead. Type theory symbols like `λ ∀ ⊢ ⊸ Γ τ` are included.
 
+### Images
+
+```ts
+s.image('disk.png', [300, 320], [220, 220]);
+s.image('photo.jpg', [0, 0], [400, 300], { fit: 'cover', opacity: 0.8 });
+```
+
+Places a picture in the drawing, for the parts you'd rather not draw. Transparent PNGs keep their transparency.
+`fit` is `contain` (the default), `cover` or `stretch`.
+When the sketch draws itself, the image fades in at its turn on the timeline. Set `draw: false` to show it from the start.
+
+The CLI reads a relative path from the sketch's folder and embeds the file in the SVG, so the output stands on its own.
+PNG, JPEG, GIF, WebP, AVIF and SVG files work. A `data:` or `https://` source is left as it is.
+When you call `toSVG()` yourself, the source goes into the SVG unchanged, or pass `images` to turn each source into the `href` you want.
+A photo keeps its own colours in dark mode, and embedding adds about a third to its file size, so shrink it first.
+
 ### Objects, nature and textures
 
 ```ts

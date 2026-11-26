@@ -35,6 +35,12 @@ export interface TextOptions {
   draw?: boolean | undefined;
 }
 
+export interface ImageOptions {
+  fit?: 'contain' | 'cover' | 'stretch' | undefined;
+  opacity?: number | undefined;
+  draw?: boolean | undefined;
+}
+
 export type ArrowEnd = 'open' | 'filled' | 'none' | 'dot';
 
 export interface ArrowOptions extends Ink {

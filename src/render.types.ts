@@ -19,6 +19,7 @@ export interface RenderOptions {
   darkSelector?: string;
   time?: number;
   lightSelector?: string;
+  images?: (src: string) => string;
 }
 
 export interface Timeline {
@@ -43,4 +44,5 @@ export interface RenderContext {
   easing: string;
   time: number | null;
   sid: string;
+  image: (src: string) => string;
 }

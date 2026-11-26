@@ -32,6 +32,8 @@ function leafDuration(node: SceneNode, speed: number): number | null {
       return node.draw ? Math.max(150, Math.min(1400, node.points.length * 3)) : null;
     case 'text':
       return node.draw ? 400 : null;
+    case 'image':
+      return node.draw ? 600 : null;
     default:
       return null;
   }

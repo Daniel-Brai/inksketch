@@ -103,6 +103,14 @@ export interface RawNode extends NodeBase {
   bounds?: Box | undefined;
 }
 
+export interface ImageNode extends NodeBase {
+  kind: 'image';
+  src: string;
+  box: Box;
+  fit: 'contain' | 'cover' | 'stretch';
+  draw: boolean;
+}
+
 export interface GroupNode extends NodeBase {
   kind: 'group';
   children: SceneNode[];
@@ -120,7 +128,8 @@ export interface UseNode extends NodeBase {
   bounds: Box;
 }
 
-export type SceneNode = StrokeNode | FillNode | DotsNode | TextNode | RawNode | GroupNode | UseNode;
+export type SceneNode =
+  StrokeNode | FillNode | DotsNode | TextNode | RawNode | ImageNode | GroupNode | UseNode;
 
 function applyTransform(p: Point, t: Transform | undefined): Point {
   if (!t) return p;
@@ -150,6 +159,9 @@ function collect(node: SceneNode, out: Point[]): void {
       return;
     case 'text':
       out.push(...textCorners(node));
+      return;
+    case 'image':
+      out.push([node.box.x, node.box.y], [node.box.x + node.box.w, node.box.y + node.box.h]);
       return;
     case 'raw':
     case 'use':

@@ -13,7 +13,15 @@ import { EMBEDDED_PLAYER } from './embedded-player.ts';
 import { dotsPath, f, pathData } from './geometry.ts';
 import { KeyframeRegistry } from './keyframes.ts';
 import { MAX_BOIL_FRAMES } from './limits.ts';
-import type { DotsNode, FillNode, GroupNode, SceneNode, StrokeNode, TextNode } from './model.ts';
+import type {
+  DotsNode,
+  FillNode,
+  GroupNode,
+  ImageNode,
+  SceneNode,
+  StrokeNode,
+  TextNode,
+} from './model.ts';
 import type { DrawConfig } from './options.ts';
 import { createRng, hashSeed, type Rng } from './random.ts';
 import type {
@@ -184,6 +192,29 @@ function renderText(node: TextNode, ctx: RenderContext): string {
   return `<text ${attrs(list)}>${textBody(node.text)}</text>`;
 }
 
+const ASPECT: Record<ImageNode['fit'], string> = {
+  contain: 'xMidYMid meet',
+  cover: 'xMidYMid slice',
+  stretch: 'none',
+};
+
+function renderImage(node: ImageNode, ctx: RenderContext): string {
+  const { x, y, w, h } = node.box;
+
+  const list = [
+    `href="${esc(ctx.image(node.src))}"`,
+    `x="${f(x)}"`,
+    `y="${f(y)}"`,
+    `width="${f(w)}"`,
+    `height="${f(h)}"`,
+    `preserveAspectRatio="${ASPECT[node.fit]}"`,
+    numberAttr('opacity', node.opacity),
+    ...drawAttrs(drawStyle(ctx, node.id, 'fade')),
+  ];
+
+  return `<image ${attrs(list)}/>`;
+}
+
 function transformAttr(node: GroupNode): string | null {
   const t = node.transform;
 
@@ -271,6 +302,8 @@ function renderNode(node: SceneNode, ctx: RenderContext): string | null {
       return renderText(node, ctx);
     case 'raw':
       return node.svg;
+    case 'image':
+      return renderImage(node, ctx);
     case 'use':
       return `<use href="#${ctx.sid}-${node.ref}"/>`;
     case 'group':
@@ -535,6 +568,7 @@ export function renderSketch(s: Sketch, opts: RenderOptions = {}): string {
   const config = drawConfig(s, still);
   const timeline = config ? schedule(s.root, config) : EMPTY_TIMELINE;
   const keyframes = new KeyframeRegistry(sid);
+  const image = opts.images ?? ((src: string): string => src);
 
   const content = renderFrames(s, {
     seed: s.seed,
@@ -545,6 +579,7 @@ export function renderSketch(s: Sketch, opts: RenderOptions = {}): string {
     easing: config?.easing ?? 'ease-in-out',
     time: opts.time ?? null,
     sid,
+    image,
   });
 
   const reused = [...s.defs.values()].map((def) => {
@@ -557,6 +592,7 @@ export function renderSketch(s: Sketch, opts: RenderOptions = {}): string {
       easing: 'linear',
       time: opts.time ?? null,
       sid,
+      image,
       frame: 0,
       animate: false,
     };
