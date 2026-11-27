@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 import type { RenderOutcome, SceneRenderOptions } from './cli.types.ts';
 import { writePng } from './png.ts';
 import { isFailure, renderFresh } from './runner.ts';
-import { findScenes, outputPath } from './scenes.ts';
+import { findScenes, outputPath, sceneRoot } from './scenes.ts';
 
 interface RenderCommand {
   targets: string[];
@@ -20,14 +20,15 @@ const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`;
 async function save(outcome: RenderOutcome, command: RenderCommand): Promise<string> {
   if (isFailure(outcome)) return `✗ ${outcome.file}\n  ${outcome.error}`;
 
-  const svgPath = outputPath(outcome.file, command.outDir, 'svg');
+  const root = sceneRoot(outcome.file, command.targets);
+  const svgPath = outputPath(outcome.file, command.outDir, 'svg', root);
 
   await mkdir(dirname(svgPath), { recursive: true });
   await writeFile(svgPath, outcome.svg);
 
   if (command.png) {
     await writePng(outcome.svg, {
-      file: outputPath(outcome.file, command.outDir, 'png'),
+      file: outputPath(outcome.file, command.outDir, 'png', root),
       scale: command.scale,
     });
   }
