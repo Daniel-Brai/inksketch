@@ -1,5 +1,5 @@
 import { readdir, stat } from 'node:fs/promises';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import type { RenderOptions } from '#/render.types.ts';
@@ -20,6 +20,10 @@ function isRenderOptions(value: unknown): value is RenderOptions {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function isSkipped(name: string): boolean {
+  return name.startsWith('.') || name === 'node_modules';
+}
+
 async function filesIn(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
 
@@ -29,7 +33,14 @@ async function filesIn(dir: string): Promise<string[]> {
 
   const marked = ts.filter((f) => f.endsWith(SKETCH_SUFFIX));
 
-  return (marked.length ? marked : ts).sort();
+  const nested = await Promise.all(
+    entries
+      .filter((e) => e.isDirectory() && !isSkipped(e.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((e) => filesIn(join(dir, e.name))),
+  );
+
+  return [...(marked.length ? marked : ts).sort(), ...nested.flat()];
 }
 
 export async function findScenes(targets: string[]): Promise<string[]> {
@@ -45,6 +56,12 @@ export async function findScenes(targets: string[]): Promise<string[]> {
   return found;
 }
 
+export function sceneRoot(file: string, targets: string[]): string | null {
+  const roots = targets.map((t) => resolve(t)).filter((t) => file.startsWith(t + sep));
+
+  return roots.length ? roots.reduce((a, b) => (b.length > a.length ? b : a)) : null;
+}
+
 export function sceneName(file: string): string {
   const name = basename(file);
 
@@ -53,8 +70,18 @@ export function sceneName(file: string): string {
   return name.slice(0, -extname(name).length);
 }
 
-export function outputPath(file: string, outDir: string | null, ext: 'svg' | 'png'): string {
-  return join(outDir ?? dirname(file), `${sceneName(file)}.${ext}`);
+export function outputPath(
+  file: string,
+  outDir: string | null,
+  ext: 'svg' | 'png',
+  root: string | null = null,
+): string {
+  const name = `${sceneName(file)}.${ext}`;
+
+  if (outDir === null) return join(dirname(file), name);
+
+  // keep sketches from nested folders apart so same-named files never overwrite each other
+  return root === null ? join(outDir, name) : join(outDir, relative(root, dirname(file)), name);
 }
 
 export async function loadScene(file: string): Promise<{ sketch: Sketch; options: RenderOptions }> {
